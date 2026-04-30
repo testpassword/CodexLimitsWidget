@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Build artifacts
+build/
+.build/
+DerivedData/
+*.app/
+*.appex/
+*.dSYM/
+
+# Xcode user state
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
