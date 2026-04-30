@@ -6,6 +6,9 @@ Codex limits without opening an interactive Codex CLI session.
 The widget uses `codex app-server` and the `account/rateLimits/read` method, so
 it reads the same source of data that backs `/status` in the Codex CLI.
 
+**CodexLimitsWidget is an independent project and is not affiliated with,
+endorsed by, or sponsored by OpenAI.**
+
 ## Contents
 
 - `Sources/CodexLimitsHost` - a small host app that syncs an auth snapshot.
@@ -48,7 +51,7 @@ The script:
 - registers the app through Launch Services;
 - opens the host app.
 
-After installation, open the macOS widget gallery and search for `Codex Limits`.
+After installation, open the macOS widget gallery and search for `Codex Limits`.[^gatekeeper]
 
 ## Authentication
 
@@ -100,4 +103,11 @@ If the widget appears but does not show limits:
 ./install-widget.sh
 ```
 
+## License
+
+The source code is licensed under the MIT License. See [LICENSE](LICENSE).
+This license does not apply to `Resources/CodexLimits.icns`, which is a
+third-party brand asset and is not sublicensed under MIT.
+
 [^vibe]: This project is fully vibe-coded, from development to publication.
+[^gatekeeper]: Release builds are ad-hoc signed and not Apple-notarized, so macOS Gatekeeper may show a warning the first time the downloaded app is opened.
