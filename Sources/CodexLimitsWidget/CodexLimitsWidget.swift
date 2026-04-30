@@ -44,6 +44,11 @@ struct CodexLimitsEntry: TimelineEntry {
     let limits: CodexLimits
 }
 
+enum ResetDisplayStyle {
+    case relative
+    case absolute
+}
+
 struct CodexLimitsProvider: TimelineProvider {
     func placeholder(in context: Context) -> CodexLimitsEntry {
         CodexLimitsEntry(date: Date(), limits: .placeholder)
@@ -467,6 +472,7 @@ enum WidgetError: Error, CustomStringConvertible {
 struct CodexLimitsWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: CodexLimitsEntry
+    let resetDisplayStyle: ResetDisplayStyle
 
     var body: some View {
         VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
@@ -479,10 +485,10 @@ struct CodexLimitsWidgetView: View {
                     .lineLimit(4)
             } else {
                 if let primary = entry.limits.primary {
-                    LimitRow(window: primary)
+                    LimitRow(window: primary, resetDisplayStyle: resetDisplayStyle)
                 }
                 if let secondary = entry.limits.secondary {
-                    LimitRow(window: secondary)
+                    LimitRow(window: secondary, resetDisplayStyle: resetDisplayStyle)
                 }
                 Spacer(minLength: 0)
                 Text("Updated \(entry.limits.updatedAt, style: .time)")
@@ -490,7 +496,8 @@ struct CodexLimitsWidgetView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
         .containerBackground(.background, for: .widget)
     }
 
@@ -510,6 +517,7 @@ struct CodexLimitsWidgetView: View {
 
 struct LimitRow: View {
     let window: LimitWindow
+    let resetDisplayStyle: ResetDisplayStyle
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -526,7 +534,7 @@ struct LimitRow: View {
                 .tint(tint)
 
             if let resetDate = window.resetDate {
-                Text("resets \(resetDate, style: .relative)")
+                Text(resetText(for: resetDate))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -557,6 +565,44 @@ struct LimitRow: View {
         }
         return .green
     }
+
+    private func resetText(for date: Date) -> String {
+        switch resetDisplayStyle {
+        case .relative:
+            return "resets in \(relativeResetText(until: date))"
+        case .absolute:
+            let formatter = DateFormatter()
+            if Calendar.current.isDate(date, inSameDayAs: Date()) {
+                formatter.setLocalizedDateFormatFromTemplate("HH:mm")
+                return "resets at \(formatter.string(from: date))"
+            }
+            formatter.dateFormat = "dd.MM HH:mm"
+            return "resets \(formatter.string(from: date))"
+        }
+    }
+
+    private func relativeResetText(until date: Date) -> String {
+        let seconds = max(0, Int(date.timeIntervalSince(Date())))
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        let minutes = (seconds % 3_600) / 60
+
+        if days > 0 {
+            if hours > 0 {
+                return "\(days)d \(hours)h"
+            }
+            return "\(days)d"
+        }
+
+        if hours > 0 {
+            if minutes > 0 {
+                return "\(hours)h \(minutes)m"
+            }
+            return "\(hours)h"
+        }
+
+        return "\(minutes)m"
+    }
 }
 
 struct CodexLimitsWidget: Widget {
@@ -564,11 +610,24 @@ struct CodexLimitsWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: CodexLimitsProvider()) { entry in
-            CodexLimitsWidgetView(entry: entry)
+            CodexLimitsWidgetView(entry: entry, resetDisplayStyle: .relative)
         }
         .configurationDisplayName("Codex Limits")
         .description("Shows the remaining Codex 5-hour and weekly limits.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall])
+    }
+}
+
+struct CodexLimitsResetTimesWidget: Widget {
+    let kind = "CodexLimitsResetTimesWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CodexLimitsProvider()) { entry in
+            CodexLimitsWidgetView(entry: entry, resetDisplayStyle: .absolute)
+        }
+        .configurationDisplayName("Codex Reset Times")
+        .description("Shows when the Codex 5-hour and weekly limits reset.")
+        .supportedFamilies([.systemSmall])
     }
 }
 
@@ -576,5 +635,6 @@ struct CodexLimitsWidget: Widget {
 struct CodexLimitsWidgetBundle: WidgetBundle {
     var body: some Widget {
         CodexLimitsWidget()
+        CodexLimitsResetTimesWidget()
     }
 }

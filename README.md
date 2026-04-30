@@ -51,7 +51,10 @@ The script:
 - registers the app through Launch Services;
 - opens the host app.
 
-After installation, open the macOS widget gallery and search for `Codex Limits`.[^gatekeeper]
+After installation, open the macOS widget gallery and search for `Codex Limits`.
+The app provides two square widgets: `Codex Limits`, which shows relative reset
+times, and `Codex Reset Times`, which shows the clock time or date when limits
+reset.[^gatekeeper]
 
 ## Authentication
 

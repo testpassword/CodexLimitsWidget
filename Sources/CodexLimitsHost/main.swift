@@ -1,4 +1,5 @@
 import Darwin
+import AppKit
 import Foundation
 import SwiftUI
 import WidgetKit
@@ -10,6 +11,56 @@ struct CodexLimitsHostApp: App {
             HostView()
         }
         .windowResizability(.contentSize)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Codex Limits") {
+                    AboutPanel.show()
+                }
+            }
+        }
+    }
+}
+
+@MainActor
+enum AboutPanel {
+    private static let repositoryURL = URL(string: "https://github.com/testpassword/CodexLimitsWidget")!
+
+    static func show() {
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: "Codex Limits",
+            .applicationVersion: appVersion,
+            .version: buildVersion,
+            .credits: credits
+        ])
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
+    }
+
+    private static var buildVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "2"
+    }
+
+    private static var credits: NSAttributedString {
+        let body = NSMutableAttributedString(
+            string: "A native macOS widget for Codex CLI limits.\n\nGitHub Repository",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
+        let repositoryRange = (body.string as NSString).range(of: "GitHub Repository")
+        body.addAttributes(
+            [
+                .link: repositoryURL,
+                .foregroundColor: NSColor.linkColor,
+                .underlineStyle: NSUnderlineStyle.single.rawValue
+            ],
+            range: repositoryRange
+        )
+        return body
     }
 }
 
