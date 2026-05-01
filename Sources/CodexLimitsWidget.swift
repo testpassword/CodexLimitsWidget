@@ -94,13 +94,11 @@ struct CodexLimitsReader {
             "/usr/local/bin/codex",
             "/usr/bin/codex"
         ].compactMap { $0 }
-
         for candidate in candidates {
             if FileManager.default.isExecutableFile(atPath: candidate) {
                 return candidate
             }
         }
-
         throw WidgetError.codexNotFound
     }
 
@@ -109,14 +107,12 @@ struct CodexLimitsReader {
         process.executableURL = URL(fileURLWithPath: codexPath)
         process.arguments = ["app-server", "--listen", "stdio://"]
         process.environment = codexEnvironment()
-
         let stdin = Pipe()
         let stdout = Pipe()
         let stderr = Pipe()
         process.standardInput = stdin
         process.standardOutput = stdout
         process.standardError = stderr
-
         try process.run()
         let reader = JSONLineReader(
             stdout: stdout.fileHandleForReading,
@@ -129,28 +125,24 @@ struct CodexLimitsReader {
                 process.terminate()
             }
         }
-
         try writeJSON([
             "id": 1,
             "method": "initialize",
             "params": [
                 "clientInfo": [
                     "name": "codex-limits-widget",
-                    "version": "0.1.0"
+                    "version": "0.2.1"
                 ],
                 "capabilities": [
                     "experimentalApi": true
                 ]
             ]
         ], to: stdin.fileHandleForWriting)
-
         _ = try reader.waitForMessage(id: 1, process: process, deadline: Date().addingTimeInterval(15))
-
         try writeJSON([
             "id": 2,
             "method": "account/rateLimits/read"
         ], to: stdin.fileHandleForWriting)
-
         var message = try reader.waitForMessage(id: 2, process: process, deadline: Date().addingTimeInterval(15))
         if let error = message["error"], isCodexAccountAuthRequired(error) {
             let auth = try readChatGPTAuthTokens()
@@ -164,7 +156,6 @@ struct CodexLimitsReader {
                     "chatgptPlanType": auth.planType
                 ]
             ], to: stdin.fileHandleForWriting)
-
             let loginMessage = try reader.waitForMessage(
                 id: 3,
                 process: process,
@@ -173,40 +164,33 @@ struct CodexLimitsReader {
             if let loginError = loginMessage["error"] {
                 throw WidgetError.serverError(serverErrorDescription(loginError))
             }
-
             try writeJSON([
                 "id": 4,
                 "method": "account/rateLimits/read"
             ], to: stdin.fileHandleForWriting)
             message = try reader.waitForMessage(id: 4, process: process, deadline: Date().addingTimeInterval(15))
         }
-
         if let error = message["error"] {
             throw WidgetError.serverError(serverErrorDescription(error))
         }
-
         if let result = message["result"] as? [String: Any] {
             return result
         }
-
         throw WidgetError.missingRateLimits
     }
 
     private static func codexEnvironment() -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
         let home = NSHomeDirectory()
-
         environment["HOME"] = home
         environment["CODEX_HOME"] = "\(home)/.codex"
         environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-
         if environment["USER"] == nil {
             environment["USER"] = NSUserName()
         }
         if environment["LOGNAME"] == nil {
             environment["LOGNAME"] = NSUserName()
         }
-
         return environment
     }
 
@@ -231,7 +215,6 @@ struct CodexLimitsReader {
         guard let data = try? Data(contentsOf: authURL) else {
             throw WidgetError.authUnavailable
         }
-
         guard
             let auth = try JSONSerialization.jsonObject(with: data) as? [String: Any],
             let accessToken = auth["accessToken"] as? String,
@@ -240,7 +223,6 @@ struct CodexLimitsReader {
         else {
             throw WidgetError.authUnavailable
         }
-
         return ChatGPTAuthTokens(
             accessToken: accessToken,
             accountId: accountId,
@@ -255,7 +237,6 @@ struct CodexLimitsReader {
         ).first ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
             .appendingPathComponent("Library", isDirectory: true)
             .appendingPathComponent("Application Support", isDirectory: true)
-
         return applicationSupportURL
             .appendingPathComponent("CodexLimits", isDirectory: true)
             .appendingPathComponent("external-auth.json")
@@ -293,7 +274,6 @@ struct CodexLimitsReader {
         guard let dict = value as? [String: Any] else {
             return nil
         }
-
         let duration = number(dict["windowDurationMins"])
         let name: String
         switch duration {
@@ -310,7 +290,6 @@ struct CodexLimitsReader {
         default:
             name = fallbackName
         }
-
         let resetDate = number(dict["resetsAt"]).map { Date(timeIntervalSince1970: TimeInterval($0)) }
         return LimitWindow(
             name: name,
@@ -351,7 +330,6 @@ final class JSONLineReader {
     init(stdout: FileHandle, stderr: FileHandle) {
         self.stdout = stdout
         self.stderr = stderr
-
         stdout.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else {
@@ -359,7 +337,6 @@ final class JSONLineReader {
             }
             self?.appendStdout(data)
         }
-
         stderr.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else {
@@ -379,18 +356,15 @@ final class JSONLineReader {
             if let message = takeMessage(id: id) {
                 return message
             }
-
             if !process.isRunning {
                 if let message = takeMessage(id: id) {
                     return message
                 }
                 throw WidgetError.missingRateLimits
             }
-
             let milliseconds = max(1, min(200, Int(deadline.timeIntervalSinceNow * 1000)))
             _ = signal.wait(timeout: .now() + .milliseconds(milliseconds))
         }
-
         if process.isRunning {
             process.terminate()
         }
@@ -400,21 +374,17 @@ final class JSONLineReader {
     private func appendStdout(_ data: Data) {
         lock.lock()
         defer { lock.unlock() }
-
         stdoutBuffer.append(data)
         let newline = Data([0x0A])
-
         while let range = stdoutBuffer.range(of: newline) {
             let lineData = stdoutBuffer.subdata(in: stdoutBuffer.startIndex..<range.lowerBound)
             stdoutBuffer.removeSubrange(stdoutBuffer.startIndex..<range.upperBound)
-
             guard
                 !lineData.isEmpty,
                 let message = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any]
             else {
                 continue
             }
-
             messages.append(message)
             signal.signal()
         }
@@ -423,7 +393,6 @@ final class JSONLineReader {
     private func appendStderr(_ data: Data) {
         lock.lock()
         defer { lock.unlock() }
-
         if let text = String(data: data, encoding: .utf8) {
             stderrText += text
         }
@@ -432,7 +401,6 @@ final class JSONLineReader {
     private func takeMessage(id: Int) -> [String: Any]? {
         lock.lock()
         defer { lock.unlock() }
-
         guard let index = messages.firstIndex(where: { CodexLimitsReader.number($0["id"]) == id }) else {
             return nil
         }
@@ -477,7 +445,6 @@ struct CodexLimitsWidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
             header
-
             if let error = entry.limits.error {
                 Text(error)
                     .font(.caption)
@@ -497,7 +464,7 @@ struct CodexLimitsWidgetView: View {
             }
         }
         .padding(.vertical, 14)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 2)
         .containerBackground(.background, for: .widget)
     }
 
@@ -509,7 +476,7 @@ struct CodexLimitsWidgetView: View {
             if let plan = entry.limits.plan {
                 Text(plan.uppercased())
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.blue)
             }
         }
     }
@@ -529,10 +496,8 @@ struct LimitRow: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-
             ProgressView(value: progressValue, total: 100)
                 .tint(tint)
-
             if let resetDate = window.resetDate {
                 Text(resetText(for: resetDate))
                     .font(.caption2)
@@ -586,21 +551,18 @@ struct LimitRow: View {
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
-
         if days > 0 {
             if hours > 0 {
                 return "\(days)d \(hours)h"
             }
             return "\(days)d"
         }
-
         if hours > 0 {
             if minutes > 0 {
                 return "\(hours)h \(minutes)m"
             }
             return "\(hours)h"
         }
-
         return "\(minutes)m"
     }
 }

@@ -11,8 +11,8 @@ endorsed by, or sponsored by OpenAI.**
 
 ## Contents
 
-- `Sources/CodexLimitsHost` - a small host app that syncs an auth snapshot.
-- `Sources/CodexLimitsWidget` - the WidgetKit extension that reads and renders limits.
+- `Sources/CodexLimitsHost.swift` - a small host app that syncs an auth snapshot.
+- `Sources/CodexLimitsWidget.swift` - the WidgetKit extension that reads and renders limits.
 - `Resources` - `Info.plist`, entitlements, and the app/widget icon.
 - `codex-limits` - a CLI script for printing limits without the interactive TUI.
 - `build-widget.sh` - builds the `.app` bundle.
@@ -72,6 +72,13 @@ The snapshot stores only:
 - update timestamp.
 
 The refresh token is not copied.
+
+## Refresh cadence
+
+The widget asks WidgetKit to refresh its timeline every 5 minutes. macOS may
+delay or throttle widget updates, so this is a requested cadence rather than a
+strict timer. Opening the host app and pressing `Refresh Widget` forces an
+earlier timeline reload.
 
 ## CLI
 

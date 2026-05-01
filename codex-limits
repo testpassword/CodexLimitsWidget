@@ -55,7 +55,6 @@ def parse_args() -> argparse.Namespace:
 def send_request(proc: subprocess.Popen[str], req_id: int, method: str, params: Any) -> None:
     if proc.stdin is None:
         raise RuntimeError("codex app-server stdin is not available")
-
     request = {"id": req_id, "method": method}
     if params is not None:
         request["params"] = params
@@ -68,39 +67,31 @@ def read_response(
 ) -> tuple[dict[str, Any], list[str]]:
     if proc.stdout is None or proc.stderr is None:
         raise RuntimeError("codex app-server pipes are not available")
-
     selector = DefaultSelector()
     selector.register(proc.stdout, EVENT_READ, "stdout")
     selector.register(proc.stderr, EVENT_READ, "stderr")
-
     deadline = time.monotonic() + timeout
     stderr_lines: list[str] = []
-
     while time.monotonic() < deadline:
         remaining = max(0.05, deadline - time.monotonic())
         for key, _ in selector.select(min(0.25, remaining)):
             line = key.fileobj.readline()
             if not line:
                 continue
-
             if key.data == "stderr":
                 stderr_lines.append(line.rstrip())
                 continue
-
             try:
                 message = json.loads(line)
             except json.JSONDecodeError:
                 continue
-
             if message.get("id") != expected_id:
                 continue
             if "error" in message:
                 raise RuntimeError(json.dumps(message["error"], indent=2))
             return message["result"], stderr_lines
-
         if proc.poll() is not None:
             break
-
     raise TimeoutError(f"timed out waiting for response id {expected_id}")
 
 
@@ -108,7 +99,6 @@ def call_rate_limits(codex_bin: str, timeout: float) -> tuple[dict[str, Any], li
     codex_path = shutil.which(codex_bin) if "/" not in codex_bin else codex_bin
     if not codex_path:
         raise FileNotFoundError(f"codex executable not found: {codex_bin}")
-
     proc = subprocess.Popen(
         [codex_path, "app-server", "--listen", "stdio://"],
         stdin=subprocess.PIPE,
@@ -117,19 +107,17 @@ def call_rate_limits(codex_bin: str, timeout: float) -> tuple[dict[str, Any], li
         text=True,
         bufsize=1,
     )
-
     try:
         send_request(
             proc,
             1,
             "initialize",
             {
-                "clientInfo": {"name": "codex-limits", "version": "0.1.0"},
+                "clientInfo": {"name": "codex-limits", "version": "0.2.1"},
                 "capabilities": {"experimentalApi": True},
             },
         )
         _, stderr_lines = read_response(proc, 1, timeout)
-
         send_request(proc, 2, "account/rateLimits/read", None)
         result, more_stderr = read_response(proc, 2, timeout)
         return result, stderr_lines + more_stderr
@@ -144,7 +132,6 @@ def call_rate_limits(codex_bin: str, timeout: float) -> tuple[dict[str, Any], li
 def label_window(window: dict[str, Any] | None, fallback: str) -> str:
     if not window:
         return fallback
-
     mins = window.get("windowDurationMins")
     if mins == 300:
         return "5h"
@@ -162,13 +149,11 @@ def label_window(window: dict[str, Any] | None, fallback: str) -> str:
 def human_reset(ts: int | None) -> str:
     if ts is None:
         return "unknown"
-
     reset = datetime.fromtimestamp(ts).astimezone()
     delta = max(0, int(ts - time.time()))
     days, rem = divmod(delta, 86400)
     hours, rem = divmod(rem, 3600)
     minutes, _ = divmod(rem, 60)
-
     pieces = []
     if days:
         pieces.append(f"{days}d")
@@ -176,18 +161,15 @@ def human_reset(ts: int | None) -> str:
         pieces.append(f"{hours}h")
     if minutes or not pieces:
         pieces.append(f"{minutes}m")
-
     return f"{reset:%Y-%m-%d %H:%M:%S %Z} (in {' '.join(pieces)})"
 
 
 def format_window(name: str, window: dict[str, Any] | None) -> str:
     if not window:
         return f"  {name}: unavailable"
-
     used = window.get("usedPercent")
     remaining = None if used is None else max(0, 100 - int(used))
     reset = human_reset(window.get("resetsAt"))
-
     if remaining is None:
         return f"  {name}: reset {reset}"
     return f"  {name}: {used}% used, {remaining}% remaining, reset {reset}"
@@ -196,24 +178,20 @@ def format_window(name: str, window: dict[str, Any] | None) -> str:
 def format_bucket(limit_id: str, bucket: dict[str, Any]) -> list[str]:
     plan = bucket.get("planType")
     reached = bucket.get("rateLimitReachedType")
-
     lines = []
     if plan:
         lines.append(f"  plan: {plan}")
     if reached:
         lines.append(f"  status: {reached}")
-
     primary = bucket.get("primary")
     secondary = bucket.get("secondary")
     lines.append(format_window(label_window(primary, "primary"), primary))
     lines.append(format_window(label_window(secondary, "secondary"), secondary))
-
     return lines
 
 
 def main() -> int:
     args = parse_args()
-
     try:
         result, stderr_lines = call_rate_limits(args.codex_bin, args.timeout)
     except Exception as exc:
@@ -222,11 +200,9 @@ def main() -> int:
             for line in stderr_lines:
                 print(line, file=sys.stderr)
         return 1
-
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
-
     buckets = result.get("rateLimitsByLimitId") or {"codex": result.get("rateLimits")}
     if not args.all:
         bucket = buckets.get(args.limit_id)
@@ -235,13 +211,11 @@ def main() -> int:
             print(f"limit bucket not found: {args.limit_id}. Known: {known}", file=sys.stderr)
             return 1
         buckets = {args.limit_id: bucket}
-
     rendered: list[str] = []
     for limit_id, bucket in buckets.items():
         if rendered:
             rendered.append("")
         rendered.extend(format_bucket(str(limit_id), bucket))
-
     print("\n".join(rendered))
     return 0
 

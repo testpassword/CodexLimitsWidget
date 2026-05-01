@@ -36,11 +36,11 @@ enum AboutPanel {
     }
 
     private static var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.1"
     }
 
     private static var buildVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "2"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "3"
     }
 
     private static var credits: NSAttributedString {
@@ -71,12 +71,10 @@ struct HostView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Codex Limits")
                 .font(.title2.weight(.semibold))
-
             Text(status)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-
             Button("Refresh Widget") {
                 refreshWidget()
             }
@@ -106,12 +104,10 @@ enum AuthSnapshotWriter {
         let updatedAt = Date()
         let destination = try authSnapshotURL()
         let directory = destination.deletingLastPathComponent()
-
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true
         )
-
         let payload: [String: Any] = [
             "accessToken": auth.accessToken,
             "accountId": auth.accountId,
@@ -122,13 +118,11 @@ enum AuthSnapshotWriter {
             withJSONObject: payload,
             options: [.prettyPrinted, .sortedKeys]
         )
-
         try data.write(to: destination, options: [.atomic])
         try? FileManager.default.setAttributes(
             [.posixPermissions: 0o600],
             ofItemAtPath: destination.path
         )
-
         return updatedAt
     }
 
@@ -145,13 +139,11 @@ enum AuthSnapshotWriter {
         else {
             throw HostError.authUnavailable
         }
-
         guard let planType = chatGPTPlanType(from: accessToken)
             ?? (tokens["id_token"] as? String).flatMap(chatGPTPlanType(from:))
         else {
             throw HostError.invalidAuthToken
         }
-
         return ChatGPTAuthTokens(
             accessToken: accessToken,
             accountId: accountId,
@@ -164,7 +156,6 @@ enum AuthSnapshotWriter {
         let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: realHomeDirectory(), isDirectory: true)
                 .appendingPathComponent("Library", isDirectory: true)
-
         return libraryURL
             .appendingPathComponent("Containers", isDirectory: true)
             .appendingPathComponent(widgetIdentifier, isDirectory: true)
@@ -180,7 +171,6 @@ enum AuthSnapshotWriter {
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("PlugIns", isDirectory: true)
             .appendingPathComponent("CodexLimitsWidgetExtension.appex", isDirectory: true)
-
         guard
             let bundle = Bundle(url: extensionURL),
             let identifier = bundle.bundleIdentifier,
@@ -188,7 +178,6 @@ enum AuthSnapshotWriter {
         else {
             throw HostError.widgetExtensionUnavailable
         }
-
         return identifier
     }
 
@@ -202,7 +191,6 @@ enum AuthSnapshotWriter {
                 return path
             }
         }
-
         return NSHomeDirectory()
     }
 
@@ -211,7 +199,6 @@ enum AuthSnapshotWriter {
         guard parts.count >= 2 else {
             return nil
         }
-
         var payload = String(parts[1])
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
@@ -219,7 +206,6 @@ enum AuthSnapshotWriter {
         if remainder > 0 {
             payload += String(repeating: "=", count: 4 - remainder)
         }
-
         guard
             let data = Data(base64Encoded: payload),
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -228,7 +214,6 @@ enum AuthSnapshotWriter {
         else {
             return nil
         }
-
         return planType
     }
 }
