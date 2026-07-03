@@ -103,10 +103,12 @@ struct CodexLimitsReader {
     }
 
     private static func callCodexAppServer(codexPath: String) throws -> [String: Any] {
+        let codexHomeURL = try makeRuntimeCodexHome()
         let process = Process()
+        let environment = codexEnvironment(codexHome: codexHomeURL.path)
         process.executableURL = URL(fileURLWithPath: codexPath)
         process.arguments = ["app-server", "--listen", "stdio://"]
-        process.environment = codexEnvironment()
+        process.environment = environment
         let stdin = Pipe()
         let stdout = Pipe()
         let stderr = Pipe()
@@ -123,7 +125,9 @@ struct CodexLimitsReader {
             reader.stop()
             if process.isRunning {
                 process.terminate()
+                process.waitUntilExit()
             }
+            try? FileManager.default.removeItem(at: codexHomeURL.deletingLastPathComponent())
         }
         try writeJSON([
             "id": 1,
@@ -131,7 +135,7 @@ struct CodexLimitsReader {
             "params": [
                 "clientInfo": [
                     "name": "codex-limits-widget",
-                    "version": "0.2.1"
+                    "version": "0.2.2"
                 ],
                 "capabilities": [
                     "experimentalApi": true
@@ -179,11 +183,23 @@ struct CodexLimitsReader {
         throw WidgetError.missingRateLimits
     }
 
-    private static func codexEnvironment() -> [String: String] {
+    private static func makeRuntimeCodexHome() throws -> URL {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CodexLimits", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let codexHomeURL = rootURL.appendingPathComponent(".codex", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: codexHomeURL,
+            withIntermediateDirectories: true
+        )
+        return codexHomeURL
+    }
+
+    private static func codexEnvironment(codexHome: String) -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
         let home = NSHomeDirectory()
         environment["HOME"] = home
-        environment["CODEX_HOME"] = "\(home)/.codex"
+        environment["CODEX_HOME"] = codexHome
         environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         if environment["USER"] == nil {
             environment["USER"] = NSUserName()

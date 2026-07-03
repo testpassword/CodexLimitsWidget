@@ -36,11 +36,11 @@ enum AboutPanel {
     }
 
     private static var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.1"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.2"
     }
 
     private static var buildVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "3"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "4"
     }
 
     private static var credits: NSAttributedString {
