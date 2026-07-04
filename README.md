@@ -1,5 +1,7 @@
 # CodexLimitsWidget[^vibe]
 
+![preview](Resources/preview.jpeg)
+
 A native macOS app with a WidgetKit desktop widget that shows the remaining
 Codex limits without opening an interactive Codex CLI session.
 
